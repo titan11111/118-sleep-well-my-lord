@@ -1,0 +1,975 @@
+/* ============================================
+   殿、ご安眠を。 — UI/UX 改善版スタイル
+   評価レポート対応: 視認性・操作性・レスポンシブ
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap');
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #0f0f1a;
+}
+
+body {
+    font-family: 'Noto Serif JP', serif;
+    background: linear-gradient(160deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+    width: var(--app-width, 100%);
+    height: var(--app-height, 100%);
+    color: #f0e6d2;
+    overflow: hidden;
+    position: fixed;
+    inset: 0;
+    padding:
+        max(env(safe-area-inset-top, 0px), clamp(8px, 2vw, 20px))
+        max(env(safe-area-inset-right, 0px), clamp(8px, 2vw, 20px))
+        max(env(safe-area-inset-bottom, 0px), clamp(8px, 2vw, 20px))
+        max(env(safe-area-inset-left, 0px), clamp(8px, 2vw, 20px));
+    font-size: clamp(1rem, 2vw, 1.125rem);
+    -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+/* --------------------------------------------
+   ゲームコンテナ: 3段グリッド（Top / Canvas / Bottom）
+   Canvas を UI で覆わない構成
+   -------------------------------------------- */
+#gameContainer {
+    position: relative;
+    width: min(100%, 1400px);
+    height: 100%;
+    max-height: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 1fr;
+    gap: 0;
+    background: #1e1e2e;
+    border: 3px solid #d4af37;
+    border-radius: 16px;
+    box-shadow: 0 0 60px rgba(212, 175, 55, 0.25),
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+/* 行の明示的割り当て（スクリーンと被せないため） */
+.top-ui { grid-area: 1 / 1; }
+.canvas-wrap { grid-area: 2 / 1; }
+.bottom-ui { grid-area: 3 / 1; }
+
+/* オーバーレイ用スクリーン（タイトル・ステージ選択・リザルト） */
+#titleScreen,
+#stageSelectScreen,
+#resultScreen {
+    grid-area: 1 / 1 / -1 / -1;
+    z-index: 100;
+    position: relative;
+}
+
+/* --------------------------------------------
+   Top UI: ステージ・所持金・タイマー・安眠ゲージ
+   -------------------------------------------- */
+.top-ui {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: clamp(12px, 2vw, 20px);
+    align-items: center;
+    padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 28px);
+    background: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0.5));
+    border-bottom: 2px solid rgba(212, 175, 55, 0.35);
+    flex-shrink: 0;
+}
+
+.stat-group {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 1.5vw, 16px);
+    font-size: clamp(1.1rem, 1.8vw, 1.4rem);
+    font-weight: 600;
+}
+
+.stat-group--gauge {
+    flex: 1;
+    min-width: 0;
+    max-width: 400px;
+}
+
+.sleep-label {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.sleep-gauge {
+    flex: 1;
+    min-width: 120px;
+    height: clamp(32px, 4vh, 44px);
+    background: rgba(0,0,0,0.5);
+    border: 2px solid rgba(212, 175, 55, 0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+.sleep-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2e7d32, #66bb6a, #9ccc65);
+    transition: width 0.4s ease, background 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+    color: #0a0a0a;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.sleep-fill.warning {
+    background: linear-gradient(90deg, #e65100, #ff9800, #ffb74d);
+}
+
+.sleep-fill.danger {
+    background: linear-gradient(90deg, #b71c1c, #f44336, #e91e63);
+    animation: gauge-pulse 0.6s infinite alternate;
+}
+
+@keyframes gauge-pulse {
+    from { opacity: 1; filter: brightness(1.1); }
+    to { opacity: 0.85; filter: brightness(1); }
+}
+
+/* --------------------------------------------
+   Canvas ラッパー: 残り空間をすべて使用
+   -------------------------------------------- */
+.canvas-wrap {
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a14;
+    padding: clamp(4px, 1vw, 10px);
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: contain;
+    background: #1a1a2e;
+    border-radius: 8px;
+}
+
+/* --------------------------------------------
+   Bottom UI: メッセージ群 / 罠パレット / 操作ボタン
+   情報の優先度を明確に
+   -------------------------------------------- */
+.bottom-ui {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(8px, 1.5vw, 14px);
+    padding:
+        clamp(12px, 2vw, 20px)
+        clamp(16px, 3vw, 28px)
+        calc(clamp(12px, 2vw, 20px) + env(safe-area-inset-bottom, 0px))
+        clamp(16px, 3vw, 28px);
+    background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.75));
+    border-top: 2px solid rgba(212, 175, 55, 0.35);
+    overflow-y: auto;
+    max-height: min(36vh, 320px);
+    flex-shrink: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.bottom-ui__messages {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 2.5em;
+}
+
+.message-display {
+    order: 1;
+    text-align: center;
+    font-size: clamp(1rem, 1.4vw, 1.35rem);
+    color: #ffd700;
+    padding: 10px 14px;
+    background: rgba(212, 175, 55, 0.12);
+    border-radius: 8px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.lord-sleep-talk {
+    order: 0;
+    font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+    color: #f5f1e8;
+    font-style: italic;
+    min-height: 1.5em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.rojin-monologue {
+    order: 0;
+    font-size: clamp(0.85rem, 1vw, 1rem);
+    color: #b8a88a;
+    min-height: 1.4em;
+}
+
+.scout-info {
+    order: 0;
+    font-size: clamp(0.9rem, 1vw, 1.05rem);
+    color: #c4b896;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    max-height: 80px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.scout-info ul {
+    margin: 4px 0 0 1em;
+    padding: 0;
+}
+
+/* --------------------------------------------
+   罠パレット: タッチターゲット拡大（HIG 44pt ≒ 88px 以上）
+   -------------------------------------------- */
+.trap-palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: clamp(8px, 1.2vw, 12px);
+    overflow-y: auto;
+    max-height: 200px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.trap-btn {
+    position: relative;
+    min-width: 100px;
+    min-height: 100px;
+    padding: 12px 8px;
+    background: rgba(212, 175, 55, 0.18);
+    border: 2px solid rgba(212, 175, 55, 0.5);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.08s ease, opacity 0.08s ease, background 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+}
+
+.trap-btn:active {
+    transform: scale(0.94);
+    opacity: 0.9;
+}
+
+.trap-btn.selected {
+    background: rgba(212, 175, 55, 0.5);
+    border-color: #fff;
+    box-shadow: 0 0 14px rgba(212, 175, 55, 0.45);
+}
+
+.trap-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.4);
+}
+
+.trap-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.92);
+    color: #ffd700;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.85em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 20;
+}
+
+.trap-icon {
+    font-size: clamp(2rem, 3vw, 2.6rem);
+    line-height: 1;
+}
+
+.trap-cost {
+    color: #ffd700;
+    font-weight: 700;
+}
+
+/* --------------------------------------------
+   操作ボタン
+   -------------------------------------------- */
+.control-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding-top: 4px;
+}
+
+.btn {
+    min-height: 48px;
+    min-width: 120px;
+    padding: 14px 28px;
+    font-size: clamp(1rem, 1.2vw, 1.2rem);
+    font-family: inherit;
+    font-weight: 700;
+    background: linear-gradient(135deg, #d4af37, #b8962e);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.08s ease, opacity 0.08s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.btn:active {
+    transform: scale(0.96);
+    opacity: 0.88;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn--primary {
+    background: linear-gradient(135deg, #c9a227, #a68b22);
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+}
+
+/* --------------------------------------------
+   モーダルスクリーン（タイトル・ステージ選択・リザルト）
+   -------------------------------------------- */
+.screen {
+    background: rgba(0,0,0,0.94);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: clamp(20px, 4vw, 40px);
+    text-align: center;
+    animation: screen-fadeIn 0.35s ease-out;
+}
+
+.screen.hidden {
+    display: none;
+}
+
+@keyframes screen-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.screen h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: #d4af37;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+    margin-bottom: clamp(16px, 2vw, 24px);
+}
+
+.screen h2 {
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    margin-bottom: clamp(12px, 1.5vw, 20px);
+}
+
+.story-text {
+    background: rgba(0,0,0,0.5);
+    padding: clamp(20px, 3vw, 32px);
+    border-radius: 12px;
+    border-left: 4px solid #d4af37;
+    margin: clamp(16px, 2vw, 24px) 0;
+    max-width: 720px;
+    max-height: 50vh;
+    overflow-y: auto;
+    text-align: left;
+    line-height: 1.9;
+    font-size: clamp(0.95rem, 1.1vw, 1.1rem);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin: clamp(16px, 2vw, 24px) 0;
+    max-width: 820px;
+}
+
+.stage-card {
+    min-height: 88px;
+    padding: 16px;
+    background: rgba(212, 175, 55, 0.1);
+    border: 2px solid rgba(212, 175, 55, 0.4);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stage-card.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* --------------------------------------------
+   メッセージ表示のパルス（重要通知用）
+   -------------------------------------------- */
+@keyframes pulse {
+    from { opacity: 1; }
+    to { opacity: 0.75; }
+}
+
+/* --------------------------------------------
+   レスポンシブ: タブレット
+   -------------------------------------------- */
+@media (max-width: 1200px) {
+    #gameContainer {
+        width: 100%;
+        max-height: 800px;
+    }
+
+    .top-ui {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .stat-group--gauge {
+        grid-column: 1 / -1;
+        max-width: none;
+    }
+
+    .trap-palette {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+/* --------------------------------------------
+   レスポンシブ: スマートフォン
+   -------------------------------------------- */
+@media (max-width: 768px) {
+    body {
+        padding:
+            env(safe-area-inset-top, 0px)
+            env(safe-area-inset-right, 0px)
+            env(safe-area-inset-bottom, 0px)
+            env(safe-area-inset-left, 0px);
+    }
+
+    #gameContainer {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .top-ui {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+        gap: 10px;
+    }
+
+    .stat-group {
+        font-size: 1.1rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-group--gauge {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sleep-gauge {
+        width: 100%;
+        height: 40px;
+        max-width: none;
+    }
+
+    .bottom-ui {
+        max-height: min(38dvh, 290px);
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .trap-btn {
+        min-width: 88px;
+        min-height: 88px;
+        padding: 10px 6px;
+        font-size: 0.9rem;
+    }
+
+    .trap-icon {
+        font-size: 1.9rem;
+    }
+
+    .trap-palette {
+        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+        max-height: 150px;
+    }
+
+    .control-panel {
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .btn {
+        min-width: 100px;
+        min-height: 44px;
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+
+    .message-display {
+        font-size: 1rem;
+        min-height: 40px;
+    }
+}
+
+/* --------------------------------------------
+   極小画面
+   -------------------------------------------- */
+@media (max-width: 400px) {
+    .top-ui {
+        padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+    }
+
+    .stat-group {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 1rem;
+    }
+
+    .bottom-ui {
+        gap: 8px;
+        max-height: min(34dvh, 240px);
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .trap-btn {
+        min-width: 80px;
+        min-height: 80px;
+        padding: 8px 6px;
+    }
+
+    .trap-palette {
+        grid-template-columns: repeat(4, 1fr);
+        max-height: 140px;
+        gap: 6px;
+    }
+
+    .message-display,
+    .scout-info,
+    .lord-sleep-talk,
+    .rojin-monologue {
+        font-size: 0.9rem;
+    }
+}
+
+/* ========================================
+   Timeline Vision System スタイル
+   ======================================== */
+
+.timeline-vision-panel {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    width: 280px;
+    max-height: 60vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #4488ff;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(68, 136, 255, 0.3);
+    z-index: 100;
+    overflow-y: auto;
+    transform: translateY(-50%);
+    transition: all 0.3s ease;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.timeline-vision-panel.hidden {
+    display: none;
+}
+
+.timeline-vision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #4488ff;
+    background: rgba(68, 136, 255, 0.1);
+}
+
+.timeline-vision-header h3 {
+    margin: 0;
+    font-size: 13px;
+    color: #4488ff;
+    font-weight: bold;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    transition: color 0.2s, transform 0.08s ease, opacity 0.08s ease;
+}
+
+.timeline-vision-content {
+    padding: 10px;
+}
+
+.timeline-enemy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.timeline-enemy-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #4488ff;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #ccc;
+}
+
+.timeline-enemy-item.critical {
+    border-left-color: #cc0000;
+    background: rgba(204, 0, 0, 0.1);
+}
+
+.timeline-enemy-item.high {
+    border-left-color: #ff6600;
+    background: rgba(255, 102, 0, 0.1);
+}
+
+.timeline-enemy-item.medium {
+    border-left-color: #ffcc00;
+    background: rgba(255, 204, 0, 0.1);
+}
+
+.timeline-enemy-item.low {
+    border-left-color: #0066cc;
+    background: rgba(0, 102, 204, 0.1);
+}
+
+.timeline-enemy-name {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.timeline-enemy-priority {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.priority-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.priority-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4488ff, #00ff88);
+    transition: width 0.3s ease;
+}
+
+/* ========================================
+   Scenario Panel (複数案シミュレーション)
+   ======================================== */
+
+.scenario-panel {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 900px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #d4af37;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+    z-index: 100;
+    transition: all 0.3s ease;
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.scenario-panel.hidden {
+    display: none;
+}
+
+.scenario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #d4af37;
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.scenario-header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: #d4af37;
+    font-weight: bold;
+}
+
+.scenario-content {
+    padding: 16px;
+}
+
+.scenario-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.scenario-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid #666;
+    border-radius: 6px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.scenario-card.best {
+    border-color: #ffff00;
+    background: rgba(255, 255, 0, 0.1);
+}
+
+.scenario-card.best::before {
+    content: "★";
+    position: absolute;
+    top: -8px;
+    right: 8px;
+    font-size: 20px;
+    color: #ffff00;
+}
+
+.scenario-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #d4af37;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.scenario-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+}
+
+.scenario-stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.scenario-stat-label {
+    color: #aaa;
+}
+
+.scenario-stat-value {
+    color: #00ff88;
+    font-weight: bold;
+}
+
+.scenario-stat-value.critical {
+    color: #ff6666;
+}
+
+.scenario-stat-value.high {
+    color: #ffaa00;
+}
+
+.scenario-stat-value.positive {
+    color: #00ff88;
+}
+
+.scenario-select-btn {
+    width: 100%;
+    padding: 8px;
+    background: linear-gradient(135deg, #4488ff 0%, #0066ff 100%);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.scenario-select-btn:active {
+    transform: scale(0.98);
+}
+
+.btn-close:active,
+.stage-card:active,
+.scenario-card:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .trap-btn:hover {
+        background: rgba(212, 175, 55, 0.35);
+        transform: scale(1.06) translateY(-2px);
+        box-shadow: 0 6px 16px rgba(212, 175, 55, 0.25);
+    }
+
+    .trap-btn:hover:not(.disabled)::after {
+        opacity: 1;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+    }
+
+    .btn--primary:hover {
+        box-shadow: 0 8px 28px rgba(212, 175, 55, 0.5);
+    }
+
+    .stage-card:hover {
+        background: rgba(212, 175, 55, 0.22);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(212, 175, 55, 0.2);
+    }
+
+    .scenario-card:hover {
+        border-color: #d4af37;
+        background: rgba(212, 175, 55, 0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    }
+
+    .btn-close:hover {
+        color: #fff;
+    }
+
+    .scenario-select-btn:hover {
+        background: linear-gradient(135deg, #66aaff 0%, #0088ff 100%);
+        transform: scale(1.02);
+    }
+}
+
+/* Timeline Vision アニメーション */
+
+@keyframes timelinePulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes scenarioCardGlow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+    }
+}
+
+.timeline-enemy-item.critical {
+    animation: timelinePulse 1s infinite;
+}
+
+.scenario-card.best {
+    animation: scenarioCardGlow 2s infinite;
+}
+
+/* レスポンシブ対応 */
+
+@media (max-width: 768px) {
+    .timeline-vision-panel {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        width: auto;
+        max-height: 28dvh;
+        transform: none;
+    }
+
+    .scenario-panel {
+        position: fixed;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+        width: calc(100% - 20px);
+        max-width: none;
+        left: 10px;
+        transform: none;
+        max-height: 34dvh;
+    }
+
+    .scenario-cards {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🏯 殿、ご安眠を。</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <header class="top-ui" aria-label="ゲーム情報">
+            <div class="stat-group">
+                <span>ステージ: <strong id="stageDisplay">1</strong></span>
+                <span>💰 <strong id="moneyDisplay">100</strong>G</span>
+                <span id="timerDisplay">⏰ 60秒</span>
+            </div>
+            <div class="stat-group stat-group--gauge">
+                <span id="sleepLabel" class="sleep-label">😴 ぐっすり</span>
+                <div class="sleep-gauge">
+                    <div id="sleepFill" class="sleep-fill" style="width: 100%;">100%</div>
+                </div>
+            </div>
+            <div class="stat-group">
+                <span id="phaseDisplay">昼（準備中）</span>
+            </div>
+        </header>
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="600" height="400" aria-label="ゲーム画面"></canvas>
+        </div>
+        <footer class="bottom-ui" id="bottomUI" aria-label="操作パネル">
+            <div class="bottom-ui__messages">
+                <div class="lord-sleep-talk" id="lordSleepTalk"></div>
+                <div class="rojin-monologue" id="rojinMonologue"></div>
+                <div class="scout-info" id="scoutInfo"></div>
+                <div class="message-display" id="messageDisplay">罠を配置して殿の安眠を守れ！</div>
+            </div>
+            <div class="trap-palette" id="trapPalette"></div>
+            <div class="control-panel">
+                <button class="btn btn--primary" id="readyBtn" onclick="game.startNight()">準備完了</button>
+                <button class="btn" id="nightSpeedBtn" onclick="game.toggleNightSpeed()" style="display: none;">⏩ 2倍速</button>
+                <button class="btn" onclick="game.showStageSelect()">ステージ選択</button>
+            </div>
+        </footer>
+
+        <!-- Timeline Vision パネル -->
+        <div id="timelineVisionPanel" class="timeline-vision-panel hidden">
+            <div class="timeline-vision-header">
+                <h3>🎯 Timeline Vision — 敵移動予測</h3>
+                <button class="btn-close" onclick="document.getElementById('timelineVisionPanel').classList.add('hidden')">✕</button>
+            </div>
+            <div class="timeline-vision-content">
+                <div id="timelineEnemyList" class="timeline-enemy-list"></div>
+            </div>
+        </div>
+
+        <!-- シミュレーション比較パネル -->
+        <div id="scenarioPanel" class="scenario-panel hidden">
+            <div class="scenario-header">
+                <h3>📊 複数案シミュレーション比較</h3>
+                <button class="btn-close" onclick="document.getElementById('scenarioPanel').classList.add('hidden')">✕</button>
+            </div>
+            <div class="scenario-content" id="scenarioContent">
+                <div class="scenario-cards">
+                    <div id="scenarioA" class="scenario-card" onclick="game.confirmScenario('A')">
+                        <div class="scenario-title">案A</div>
+                        <div id="scenarioA-stats" class="scenario-stats"></div>
+                        <button class="btn scenario-select-btn">実行</button>
+                    </div>
+                    <div id="scenarioB" class="scenario-card" onclick="game.confirmScenario('B')">
+                        <div class="scenario-title">案B</div>
+                        <div id="scenarioB-stats" class="scenario-stats"></div>
+                        <button class="btn scenario-select-btn">実行</button>
+                    </div>
+                    <div id="scenarioC" class="scenario-card" onclick="game.confirmScenario('C')">
+                        <div class="scenario-title">案C</div>
+                        <div id="scenarioC-stats" class="scenario-stats"></div>
+                        <button class="btn scenario-select-btn">実行</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="titleScreen" class="screen">
+            <h1>🏯 殿、ご安眠を。</h1>
+            <div class="story-text">
+                <p><strong>Scene 1 — 縁側・昼下がり</strong></p>
+                <p>殿「ふわぁ〜………春じゃのお」</p>
+                <p>殿「今日はもう、何もしたくないのじゃ」</p>
+                <p>殿「飯も要らぬ。茶も要らぬ」</p>
+                <p>殿「ただ…ひたすら…寝たい」</p>
+                <br>
+                <p>家老「（毎日言っておられますが）」</p>
+                <p>家老「はは。ではゆるりとお休みを」</p>
+                <br>
+                <p><strong>Scene 2 — 家老の部屋・直後</strong></p>
+                <p>家来「左近様ァァ！！」</p>
+                <p>家老「こら、静かにせい！殿が――」</p>
+                <p>家来「大変でございます！本日、夜分に敵の一団が城へ忍び込みます」</p>
+                <p>家老「…………何人だ」</p>
+                <p>家来「十数名かと」</p>
+                <br>
+                <p>家老「よし」</p>
+                <p>家来「よし…とは？」</p>
+                <p>家老「夜が来る前に、儂が全部仕掛けておく」</p>
+                <p>家老「罠じゃ。殿には気づかせん」</p>
+                <p>家老「<strong>殿には、指一本触れさせぬ</strong>」</p>
+                <br>
+                <p style="text-align: center; color: #d4af37;">殿「zzz……蛙……うるさい……zzz」</p>
+            </div>
+            <button class="btn" onclick="game.showStageSelect()">始める</button>
+        </div>
+        <div id="stageSelectScreen" class="screen hidden">
+            <h2>ステージ選択</h2>
+            <div class="stage-grid" id="stageGrid"></div>
+            <button class="btn" onclick="game.showTitle()">戻る</button>
+        </div>
+        <div id="resultScreen" class="screen hidden">
+            <h2 id="resultTitle"></h2>
+            <p id="resultMessage"></p>
+            <div id="resultStats"></div>
+            <div style="margin-top: 20px;">
+                <button class="btn" id="nextStageBtn" onclick="game.nextStage()" style="display: none;">次のステージ</button>
+                <button class="btn" onclick="game.retryStage()">もう一度</button>
+                <button class="btn" onclick="game.showStageSelect()">ステージ選択</button>
+            </div>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="game-timeline.js"></script>
+    <script src="game-ui-vision.js"></script>
+    <script src="game.js"></script>
+    <script src="game-night.js"></script>
+    <script src="game-render.js"></script>
+    <script src="game-storage.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
